@@ -1,0 +1,33 @@
+{
+  "name": "gdriveautobackup",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "backup": "node index.js --run-now",
+    "backup:site": "node index.js --website-only",
+    "backup:db": "node index.js --database-only",
+    "get-token": "node get-refresh-token.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "backup",
+    "google-drive",
+    "mysql",
+    "website",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Automatic website and database backup to Google Drive",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "dotenv": "^16.5.0",
+    "googleapis": "^148.0.0",
+    "mysql-backup": "^1.0.0",
+    "mysql2": "^3.14.1",
+    "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
+    "open": "^8.4.2"
+  }
+}
