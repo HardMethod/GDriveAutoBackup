@@ -86,29 +86,17 @@ async function findFolder(drive, folderName, parentFolderId) {
   }
 }
 
-// Функция для создания бэкапа сайта
-async function backupWebsite(password = '') {
+// Функция для создания бэкапа сайта (без пароля, сохраняет во временную директорию)
+async function backupWebsite() {
   return new Promise((resolve, reject) => {
     const websitePath = process.env.WEBSITE_PATH;
     const date = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
     const outputFile = path.join(TEMP_DIR, `website_backup_${date}.zip`);
     const output = fs.createWriteStream(outputFile);
     
-    // Создаем архив
-    let archive;
-    if (password && password.trim() !== '') {
-      // Для защищенных паролем архивов используем zip-encrypted
-      archive = archiver.create('zip-encrypted', {
-        zlib: { level: 9 },
-        encryptionMethod: 'aes256',
-        password: password
-      });
-      console.log('Создание защищенного паролем архива сайта...');
-    } else {
-      // Для обычных архивов используем стандартный zip
-      archive = archiver('zip', { zlib: { level: 9 } });
-      console.log('Создание архива сайта без пароля...');
-    }
+    // Создаем архив (всегда без пароля на этом этапе)
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    console.log('Создание архива сайта...');
 
     output.on('close', () => {
       console.log(`Бэкап сайта создан: ${outputFile}`);
@@ -125,8 +113,8 @@ async function backupWebsite(password = '') {
   });
 }
 
-// Функция для создания бэкапа базы данных
-async function backupDatabase(password = '') {
+// Функция для создания бэкапа базы данных (без пароля, сохраняет во временную директорию)
+async function backupDatabase() {
   const date = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
   const outputFile = path.join(TEMP_DIR, `db_backup_${date}.sql`);
 
@@ -138,25 +126,11 @@ async function backupDatabase(password = '') {
       { stdio: 'inherit' }
     );
 
-    // Сжимаем дамп БД
+    // Сжимаем дамп БД (без пароля на этом этапе)
     const zipFile = `${outputFile}.zip`;
     const output = fs.createWriteStream(zipFile);
-    
-    // Создаем архив
-    let archive;
-    if (password && password.trim() !== '') {
-      // Для защищенных паролем архивов используем zip-encrypted
-      archive = archiver.create('zip-encrypted', {
-        zlib: { level: 9 },
-        encryptionMethod: 'aes256',
-        password: password
-      });
-      console.log('Создание защищенного паролем архива базы данных...');
-    } else {
-      // Для обычных архивов используем стандартный zip
-      archive = archiver('zip', { zlib: { level: 9 } });
-      console.log('Создание архива базы данных без пароля...');
-    }
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    console.log('Создание архива базы данных...');
 
     return new Promise((resolve, reject) => {
       output.on('close', () => {
@@ -178,6 +152,49 @@ async function backupDatabase(password = '') {
     console.error('Ошибка при создании бэкапа базы данных:', error);
     throw error;
   }
+}
+
+// Функция для создания общего архива с паролем
+async function createMasterArchive(files, password = '') {
+  const date = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
+  const masterFile = path.join(TEMP_DIR, `backup_${date}.zip`);
+  const output = fs.createWriteStream(masterFile);
+  
+  // Создаем архив
+  let archive;
+  if (password && password.trim() !== '') {
+    // Для защищенных паролем архивов используем zip-encrypted
+    archive = archiver.create('zip-encrypted', {
+      zlib: { level: 9 },
+      encryptionMethod: 'aes256',
+      password: password
+    });
+    console.log('Создание защищенного паролем общего архива...');
+  } else {
+    // Для обычных архивов используем стандартный zip
+    archive = archiver('zip', { zlib: { level: 9 } });
+    console.log('Создание общего архива без пароля...');
+  }
+  
+  return new Promise((resolve, reject) => {
+    output.on('close', () => {
+      console.log(`Общий архив создан: ${masterFile}`);
+      resolve(masterFile);
+    });
+    
+    archive.on('error', (err) => {
+      reject(err);
+    });
+    
+    archive.pipe(output);
+    
+    // Добавляем все файлы в общий архив
+    for (const file of files) {
+      archive.file(file, { name: path.basename(file) });
+    }
+    
+    archive.finalize();
+  });
 }
 
 // Функция для загрузки файла на Google Drive
@@ -297,11 +314,12 @@ async function runBackup() {
     
     // Создаем массивы для задач бэкапа
     const backupTasks = [];
+    const backupFiles = [];
     
     // Проверяем, нужно ли бэкапить сайт
     if (process.env.BACKUP_WEBSITE === 'true') {
       console.log('Включен бэкап сайта');
-      backupTasks.push(backupWebsite(archivePassword));
+      backupTasks.push(backupWebsite());
     } else {
       console.log('Бэкап сайта отключен в настройках');
     }
@@ -309,7 +327,7 @@ async function runBackup() {
     // Проверяем, нужно ли бэкапить базу данных
     if (process.env.BACKUP_DATABASE === 'true') {
       console.log('Включен бэкап базы данных');
-      backupTasks.push(backupDatabase(archivePassword));
+      backupTasks.push(backupDatabase());
     } else {
       console.log('Бэкап базы данных отключен в настройках');
     }
@@ -335,12 +353,14 @@ async function runBackup() {
       backupFolderId = await createFolder(drive, backupFolderName, process.env.GOOGLE_DRIVE_FOLDER_ID);
     }
     
-    // Выполняем все задачи бэкапа параллельно
-    const results = await Promise.all(backupTasks);
+    // Выполняем все задачи бэкапа параллельно и получаем пути к созданным файлам
+    const individualBackupFiles = await Promise.all(backupTasks);
     
-    // Загружаем полученные файлы на Google Drive в созданную папку
-    const uploadTasks = results.map(file => uploadToGoogleDrive(file, backupFolderId));
-    await Promise.all(uploadTasks);
+    // Создаем общий архив со всеми бэкапами
+    const masterArchive = await createMasterArchive(individualBackupFiles, archivePassword);
+    
+    // Загружаем общий архив на Google Drive
+    await uploadToGoogleDrive(masterArchive, backupFolderId);
     
     // Ограничиваем количество бэкапов
     await limitBackupCount(maxBackups);
