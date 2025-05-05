@@ -10,6 +10,7 @@
 - Автоматическое удаление старых бэкапов
 - Запуск по расписанию с помощью CRON
 - Возможность выборочного бэкапа (только сайт или только БД)
+- Поддержка авторизации через Google Service Account
 
 ## Установка
 
@@ -48,6 +49,23 @@ npm install
 4. Создайте файл `.env` с вашими настройками (или отредактируйте существующий)
 
 ## Настройка Google Drive API
+
+### Метод 1: Использование сервисного аккаунта (рекомендуется для серверов)
+
+1. Перейдите в [Google Cloud Console](https://console.cloud.google.com/)
+2. Создайте новый проект
+3. Включите Drive API для проекта
+4. Перейдите в "IAM & Admin" → "Service Accounts"
+5. Нажмите "+ CREATE SERVICE ACCOUNT"
+6. Введите название и нажмите "CREATE AND CONTINUE"
+7. Выберите роль "Editor" и нажмите "CONTINUE" и "DONE"
+8. В списке сервисных аккаунтов нажмите на созданный аккаунт
+9. Перейдите во вкладку "KEYS" и нажмите "ADD KEY" → "Create new key"
+10. Выберите JSON и скачайте файл
+11. Переименуйте файл в `service-account-key.json` и загрузите его в корневую директорию проекта
+12. Создайте папку на Google Drive и предоставьте доступ сервисному аккаунту (email указан в файле ключа)
+
+### Метод 2: Использование OAuth
 
 1. Перейдите в [Google Developer Console](https://console.developers.google.com/)
 2. Создайте новый проект
@@ -138,6 +156,24 @@ crontab -e
 
 ## Запуск
 
+### Метод с сервисным аккаунтом (рекомендуется для серверов)
+
+```bash
+# Сделайте скрипт исполняемым
+chmod +x run-backup-service.sh
+
+# Полный бэкап (сайт + БД)
+./run-backup-service.sh
+
+# Только бэкап сайта
+./run-backup-service.sh --website-only
+
+# Только бэкап базы данных
+./run-backup-service.sh --database-only
+```
+
+### Стандартный метод с OAuth
+
 Для запуска по расписанию:
 ```bash
 node index.js
@@ -167,16 +203,21 @@ npm run backup:db
 
 ## Структура проекта
 
-- `index.js` - основной файл скрипта
+- `index.js` - основной файл скрипта (OAuth)
+- `service-account.js` - версия скрипта с использованием сервисного аккаунта
 - `.env` - файл с настройками
 - `.env.example` - пример файла настроек
 - `temp/` - временная директория для файлов перед загрузкой
-- `run-backup.sh` - скрипт для запуска в Linux
-- `run-backup.bat` - скрипт для запуска в Windows
+- `run-backup.sh` - скрипт для запуска в Linux (OAuth)
+- `run-backup-service.sh` - скрипт для запуска в Linux (Service Account)
 - `setup-ubuntu.sh` - скрипт установки для Ubuntu
 
 ## Примечания
 
 - Для работы бэкапа базы данных требуется доступ к утилите `mysqldump`
 - На Windows пути к директориям в .env должны использовать двойной обратный слеш: `C:\\path\\to\\website`
-- На Linux используйте стандартные пути: `/path/to/website` 
+- На Linux используйте стандартные пути: `/path/to/website`
+- Для автоматических бэкапов через cron добавьте строку:
+  ```
+  0 2 * * * /путь/к/GDriveAutoBackup/run-backup-service.sh >> /путь/к/GDriveAutoBackup/backup.log 2>&1
+  ``` 
