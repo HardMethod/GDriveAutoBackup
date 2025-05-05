@@ -11,6 +11,9 @@
 - Запуск по расписанию с помощью CRON
 - Возможность выборочного бэкапа (только сайт или только БД)
 - Поддержка авторизации через Google Service Account
+- Организация бэкапов в отдельные папки по дате
+- Защита архивов паролем
+- Ограничение количества хранимых бэкапов
 
 ## Установка
 
@@ -220,4 +223,27 @@ npm run backup:db
 - Для автоматических бэкапов через cron добавьте строку:
   ```
   0 2 * * * /путь/к/GDriveAutoBackup/run-backup-service.sh >> /путь/к/GDriveAutoBackup/backup.log 2>&1
-  ``` 
+  ```
+
+## Настройка
+
+### Основные параметры в .env файле
+
+```ini
+# Пути к сайту и настройки БД
+WEBSITE_PATH=/путь/к/сайту
+BACKUP_WEBSITE=true
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=пароль
+DB_NAME=имя_базы
+BACKUP_DATABASE=true
+
+# Настройки Google Drive
+GOOGLE_DRIVE_FOLDER_ID=id_папки_на_google_drive
+
+# Дополнительные настройки
+ARCHIVE_PASSWORD=пароль_для_архивов    # оставьте пустым для архивов без пароля
+MAX_BACKUPS=10                         # максимальное количество хранимых бэкапов
+BACKUP_SCHEDULE="0 2 * * *"            # расписание в формате CRON
+``` 
