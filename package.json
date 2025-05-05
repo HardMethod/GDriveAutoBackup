@@ -8,6 +8,7 @@
     "backup:site": "node index.js --website-only",
     "backup:db": "node index.js --database-only",
     "get-token": "node get-refresh-token.js",
+    "get-token-simple": "node get-token-simple.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -22,6 +23,7 @@
   "description": "Automatic website and database backup to Google Drive",
   "dependencies": {
     "archiver": "^7.0.1",
+    "archiver-zip-encrypted": "^1.0.11",
     "dotenv": "^16.5.0",
     "googleapis": "^148.0.0",
     "mysql-backup": "^1.0.0",

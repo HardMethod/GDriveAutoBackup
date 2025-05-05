@@ -2,6 +2,9 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
+// Добавляем регистрацию формата для защищенных архивов
+const archiverZipEncrypted = require('archiver-zip-encrypted');
+archiver.registerFormat('zip-encrypted', archiverZipEncrypted);
 const { google } = require('googleapis');
 const { execSync } = require('child_process');
 
@@ -93,15 +96,16 @@ async function backupWebsite(password = '') {
     
     // Создаем архив
     let archive;
-    if (password) {
-      // Если пароль задан, используем специальные опции для защиты паролем
-      archive = archiver('zip', { 
+    if (password && password.trim() !== '') {
+      // Для защищенных паролем архивов используем zip-encrypted
+      archive = archiver.create('zip-encrypted', {
         zlib: { level: 9 },
-        forceLocalTime: true,
+        encryptionMethod: 'aes256',
         password: password
       });
       console.log('Создание защищенного паролем архива сайта...');
     } else {
+      // Для обычных архивов используем стандартный zip
       archive = archiver('zip', { zlib: { level: 9 } });
       console.log('Создание архива сайта без пароля...');
     }
@@ -140,15 +144,16 @@ async function backupDatabase(password = '') {
     
     // Создаем архив
     let archive;
-    if (password) {
-      // Если пароль задан, используем специальные опции для защиты паролем
-      archive = archiver('zip', { 
+    if (password && password.trim() !== '') {
+      // Для защищенных паролем архивов используем zip-encrypted
+      archive = archiver.create('zip-encrypted', {
         zlib: { level: 9 },
-        forceLocalTime: true,
+        encryptionMethod: 'aes256',
         password: password
       });
       console.log('Создание защищенного паролем архива базы данных...');
     } else {
+      // Для обычных архивов используем стандартный zip
       archive = archiver('zip', { zlib: { level: 9 } });
       console.log('Создание архива базы данных без пароля...');
     }
